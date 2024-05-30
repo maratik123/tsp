@@ -1,6 +1,6 @@
-pub mod section_code;
-
 use rust_decimal::Decimal;
+
+pub mod section_code;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CycleDate {
