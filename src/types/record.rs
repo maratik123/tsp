@@ -1,11 +1,12 @@
+use crate::types::field::coord::{Latitude, Longitude};
 use crate::types::field::section_code::EnrichedSectionCode;
 use crate::types::field::{
-    Altitude, CycleDate, Latitude, Longitude, MagneticTrueIndicator, MagneticVariation,
-    PublicMilitaryIndicator, RecordType, RunwaySurfaceCode, TimeZone,
+    Altitude, CycleDate, MagneticTrueIndicator, MagneticVariation, PublicMilitaryIndicator,
+    RecordType, RunwaySurfaceCode, TimeZone,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct AirportPrimaryRecords<'a> {
+pub struct AirportPrimaryRecord<'a> {
     pub record_type: RecordType,
     pub customer_area_code: &'a str,
     pub icao_identifier: &'a str,

@@ -1,9 +1,9 @@
 use rust_decimal::Decimal;
 
+use crate::types::field::coord::{Latitude, LatitudeHemisphere, Longitude, LongitudeHemisphere};
 use crate::types::field::{
-    Altitude, CycleDate, Latitude, LatitudeHemisphere, Longitude, LongitudeHemisphere,
-    MagneticTrueIndicator, MagneticVariation, PublicMilitaryIndicator, RecordType,
-    RunwaySurfaceCode, TimeZone,
+    Altitude, CycleDate, MagneticTrueIndicator, MagneticVariation, PublicMilitaryIndicator,
+    RecordType, RunwaySurfaceCode, TimeZone,
 };
 use crate::util::{
     parse_alpha, parse_alphanum, parse_blank_arr, parse_num_u16, parse_num_u32, parse_num_u8,
@@ -183,8 +183,8 @@ pub fn parse_airport_reference_point_longitude(
     } else {
         let hemisphere = parse_longitude_hemisphere(airport_reference_point_longitude[0])?;
         let degrees = parse_num_u8(&airport_reference_point_longitude[1..4], 3..=3, ..=180)?;
-        let minutes = parse_num_u8(&airport_reference_point_longitude[4..6], 2..=2, ..59)?;
-        let seconds = parse_num_u8(&airport_reference_point_longitude[6..8], 2..=2, ..59)?;
+        let minutes = parse_num_u8(&airport_reference_point_longitude[4..6], 2..=2, ..60)?;
+        let seconds = parse_num_u8(&airport_reference_point_longitude[6..8], 2..=2, ..60)?;
         let fractional_seconds =
             parse_num_u8(&airport_reference_point_longitude[8..10], 2..=2, ..)?;
         if (degrees == 0
@@ -228,8 +228,8 @@ pub fn parse_airport_reference_point_latitude(
     } else {
         let hemisphere = parse_latitude_hemisphere(airport_reference_point_latitude[0])?;
         let degrees = parse_num_u8(&airport_reference_point_latitude[1..3], 2..=2, ..=90)?;
-        let minutes = parse_num_u8(&airport_reference_point_latitude[3..5], 2..=2, ..=59)?;
-        let seconds = parse_num_u8(&airport_reference_point_latitude[5..7], 2..=2, ..=59)?;
+        let minutes = parse_num_u8(&airport_reference_point_latitude[3..5], 2..=2, ..60)?;
+        let seconds = parse_num_u8(&airport_reference_point_latitude[5..7], 2..=2, ..60)?;
         let fractional_seconds = parse_num_u8(&airport_reference_point_latitude[7..9], 2..=2, ..)?;
         if (degrees == 0
             && minutes == 0

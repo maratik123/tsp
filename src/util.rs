@@ -5,13 +5,11 @@ use std::str::FromStr;
 pub fn is_alpha(bytes: &[u8]) -> bool {
     bytes
         .iter()
-        .all(|&c| matches!(c, b' ' | b'-' | b'A'..=b'Z'))
+        .all(|&c| matches!(c, b' '..=b'/' | b':'..=b'~'))
 }
 
 pub fn is_alphanum(bytes: &[u8]) -> bool {
-    bytes
-        .iter()
-        .all(|&c| matches!(c, b' ' | b'-' | b'A'..=b'Z' | b'0'..=b'9'))
+    bytes.iter().all(|&c| matches!(c, b' '..=b'~'))
 }
 
 fn parse_internal(

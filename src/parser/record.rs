@@ -11,10 +11,10 @@ use crate::parser::field::{
     parse_time_zone, parse_transition_altitude,
 };
 use crate::types::field::section_code::{AirportSubsectionCode, EnrichedSectionCode, SectionCode};
-use crate::types::record::AirportPrimaryRecords;
+use crate::types::record::AirportPrimaryRecord;
 use crate::util::{parse_blank, parse_blank_arr};
 
-pub fn parse_airport_primary_records(rec: &[u8]) -> Option<AirportPrimaryRecords> {
+pub fn parse_airport_primary_record(rec: &[u8]) -> Option<AirportPrimaryRecord> {
     if rec.len() != ENTRY_LEN {
         return None;
     }
@@ -66,7 +66,7 @@ pub fn parse_airport_primary_records(rec: &[u8]) -> Option<AirportPrimaryRecords
     let airport_name = parse_airport_name(&rec[93..123])?; // 5.71
     let file_record_number = parse_file_record_number(&rec[123..128])?; // 5.31
     let cycle_date = parse_cycle_date(&rec[128..132])?; // 5.32
-    Some(AirportPrimaryRecords {
+    Some(AirportPrimaryRecord {
         record_type,
         customer_area_code,
         icao_identifier,
@@ -103,9 +103,11 @@ mod tests {
 
     use rust_decimal::Decimal;
 
+    use crate::types::field::coord::{
+        Latitude, LatitudeHemisphere, Longitude, LongitudeHemisphere,
+    };
     use crate::types::field::{
-        CycleDate, Latitude, LatitudeHemisphere, Longitude, LongitudeHemisphere,
-        MagneticTrueIndicator, MagneticVariation, PublicMilitaryIndicator, RecordType,
+        CycleDate, MagneticTrueIndicator, MagneticVariation, PublicMilitaryIndicator, RecordType,
         RunwaySurfaceCode,
     };
 
@@ -116,10 +118,10 @@ mod tests {
         let record = b"SUSAP KLAXK2ALAX     0     \
         129YHN33563299W118242898E012000128         1800018000C    \
         MNAR    LOS ANGELES INTL              310231906";
-        let parsed = parse_airport_primary_records(&record[..]).unwrap();
+        let parsed = parse_airport_primary_record(&record[..]).unwrap();
         assert_eq!(
             parsed,
-            AirportPrimaryRecords {
+            AirportPrimaryRecord {
                 record_type: RecordType::Standard,
                 customer_area_code: "USA",
                 icao_identifier: "KLAX",
@@ -170,10 +172,10 @@ mod tests {
         let record = b"SUSAP KSEAK1ASEA     0     \
         119YHN47265960W122184240E016000432         1800018000C    \
         MNAR    SEATTLE-TACOMA INTL           065001807";
-        let parsed = parse_airport_primary_records(&record[..]).unwrap();
+        let parsed = parse_airport_primary_record(&record[..]).unwrap();
         assert_eq!(
             parsed,
-            AirportPrimaryRecords {
+            AirportPrimaryRecord {
                 record_type: RecordType::Standard,
                 customer_area_code: "USA",
                 icao_identifier: "KSEA",
@@ -224,10 +226,10 @@ mod tests {
         let record = b"SUSAP KDENK2ADEN     0     \
         160YHN39514200W104402340E008005434         1800018000C    \
         MNAR    DENVER INTL                   630481208";
-        let parsed = parse_airport_primary_records(&record[..]).unwrap();
+        let parsed = parse_airport_primary_record(&record[..]).unwrap();
         assert_eq!(
             parsed,
-            AirportPrimaryRecords {
+            AirportPrimaryRecord {
                 record_type: RecordType::Standard,
                 customer_area_code: "USA",
                 icao_identifier: "KDEN",
@@ -278,10 +280,10 @@ mod tests {
         let record = b"SUSAP KJFKK6AJFK     0     \
         145YHN40382374W073464329W013000013         1800018000C    \
         MNAR    JOHN F KENNEDY INTL           257211912";
-        let parsed = parse_airport_primary_records(&record[..]).unwrap();
+        let parsed = parse_airport_primary_record(&record[..]).unwrap();
         assert_eq!(
             parsed,
-            AirportPrimaryRecords {
+            AirportPrimaryRecord {
                 record_type: RecordType::Standard,
                 customer_area_code: "USA",
                 icao_identifier: "KJFK",
@@ -326,6 +328,60 @@ mod tests {
                     year: 19,
                     cycle: 12
                 },
+            }
+        );
+    }
+
+    #[test]
+    fn parse_ktpa() {
+        let record = b"SUSAP KTPAK7ATPA     0     \
+        110YHN27583170W082315970W005000026         1800018000C    \
+        MNAR    TAMPA INTL                    267161101";
+        let parsed = parse_airport_primary_record(&record[..]).unwrap();
+        assert_eq!(
+            parsed,
+            AirportPrimaryRecord {
+                record_type: RecordType::Standard,
+                customer_area_code: "USA",
+                icao_identifier: "KTPA",
+                icao_code: "K7",
+                enriched_section_code: EnrichedSectionCode::Airport(
+                    AirportSubsectionCode::ReferencePoints
+                ),
+                ata_designator: "TPA",
+                continuation_record_number: 0,
+                speed_limit_altitude: None,
+                longest_runway: 110,
+                ifr_capability: true,
+                longest_runway_surface_code: RunwaySurfaceCode::HardSurface,
+                airport_reference_point_latitude: Latitude {
+                    hemisphere: LatitudeHemisphere::North,
+                    degrees: 27,
+                    minutes: 58,
+                    seconds: 31,
+                    fractional_seconds: 70
+                },
+                airport_reference_point_longitude: Longitude {
+                    hemisphere: LongitudeHemisphere::West,
+                    degrees: 82,
+                    minutes: 31,
+                    seconds: 59,
+                    fractional_seconds: 70
+                },
+                magnetic_variation: MagneticVariation::West(Decimal::from_str("5").unwrap()),
+                airport_elevation: 26,
+                speed_limit: None,
+                recommended_navaid: None,
+                transition_altitude: Some(18000),
+                transition_level: Some(18000),
+                public_military_indicator: PublicMilitaryIndicator::Civil,
+                time_zone: None,
+                daylight_indicator: None,
+                magnetic_true_indicator: Some(MagneticTrueIndicator::Magnetic),
+                datum_code: "NAR",
+                airport_name: "TAMPA INTL",
+                file_record_number: 26716,
+                cycle_date: CycleDate { year: 11, cycle: 1 },
             }
         );
     }
