@@ -1,6 +1,6 @@
-use std::{fs, io};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+use std::{fs, io};
 
 use clap::Parser;
 use clap_stdin::{FileOrStdin, Source};

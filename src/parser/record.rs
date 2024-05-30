@@ -1,4 +1,5 @@
 use crate::consts::ENTRY_LEN;
+use crate::parser::field::section_code::{parse_section_code, parse_subsection_code};
 use crate::parser::field::{
     parse_airport_elevation, parse_airport_name, parse_airport_reference_point_latitude,
     parse_airport_reference_point_longitude, parse_ata_designator,
@@ -9,7 +10,6 @@ use crate::parser::field::{
     parse_recommended_navaid, parse_record_type, parse_speed_limit, parse_speed_limit_altitude,
     parse_time_zone, parse_transition_altitude,
 };
-use crate::parser::field::section_code::{parse_section_code, parse_subsection_code};
 use crate::types::field::section_code::{AirportSubsectionCode, EnrichedSectionCode, SectionCode};
 use crate::types::record::AirportPrimaryRecords;
 use crate::util::{parse_blank, parse_blank_arr};

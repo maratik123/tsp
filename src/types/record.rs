@@ -1,8 +1,8 @@
+use crate::types::field::section_code::EnrichedSectionCode;
 use crate::types::field::{
     Altitude, CycleDate, Latitude, Longitude, MagneticTrueIndicator, MagneticVariation,
     PublicMilitaryIndicator, RecordType, RunwaySurfaceCode, TimeZone,
 };
-use crate::types::field::section_code::EnrichedSectionCode;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AirportPrimaryRecords<'a> {
