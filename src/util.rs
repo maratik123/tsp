@@ -43,6 +43,14 @@ pub fn parse_alphanum(bytes: &[u8], allowed_len: impl RangeBounds<usize>) -> Opt
 }
 
 // 5.1 All alpha and alpha/numeric fields will be left justified
+pub fn trim_right_0d(bytes: &[u8]) -> &[u8] {
+    bytes
+        .iter()
+        .rposition(|&c| c != b'\r')
+        .map_or_else(|| &bytes[..0], |i| &bytes[..=i])
+}
+
+// 5.1 All alpha and alpha/numeric fields will be left justified
 pub fn trim_right_spaces(bytes: &[u8]) -> &[u8] {
     bytes
         .iter()
