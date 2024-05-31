@@ -1,4 +1,3 @@
-use crate::consts::ENTRY_LEN;
 use crate::parser::field::section_code::{parse_section_code, parse_subsection_code};
 use crate::parser::field::{
     parse_airport_elevation, parse_airport_name, parse_airport_reference_point_latitude,
@@ -13,6 +12,8 @@ use crate::parser::field::{
 use crate::types::field::section_code::{AirportSubsectionCode, EnrichedSectionCode, SectionCode};
 use crate::types::record::AirportPrimaryRecord;
 use crate::util::{parse_blank, parse_blank_arr};
+
+const ENTRY_LEN: usize = 132;
 
 pub fn parse_airport_primary_record(rec: &[u8]) -> Option<AirportPrimaryRecord> {
     if rec.len() != ENTRY_LEN {
