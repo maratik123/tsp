@@ -1,5 +1,3 @@
-use std::error::Error;
-use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 
 use crate::model::AirportIdx;
@@ -43,17 +41,6 @@ impl<'a> From<&'a AirportIdx<'a>> for DistancesIdx<'a> {
         }
     }
 }
-
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
-pub struct KeyNotFound<'a>(&'a str);
-
-impl<'a> Display for KeyNotFound<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Key not found: {}", self.0)
-    }
-}
-
-impl<'a> Error for KeyNotFound<'a> {}
 
 #[cfg(test)]
 mod tests {
