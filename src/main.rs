@@ -5,14 +5,16 @@ use std::{fs, io};
 
 use clap::Parser;
 use clap_stdin::{FileOrStdin, Source};
-use tsp::math::great_circle;
+use tsp::distance::DistancesIdx;
 
+use tsp::math::great_circle;
+use tsp::model::{Airport, AirportIdx};
 use tsp::parser::file::parse_airport_primary_records;
 use tsp::types::field::coord::{
     Coord, Latitude, LatitudeHemisphere, Longitude, LongitudeHemisphere,
 };
 use tsp::types::record::AirportPrimaryRecord;
-use tsp::util::trim_right_0d;
+use tsp::util::trim_0d;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -52,43 +54,47 @@ fn main() {
     };
     let buf = &buf[..];
 
-    let (hs, has_not_filter) = if let Some(filter) = args.filter {
+    let hs = if let Some(filter) = args.filter {
         let mut items = vec![];
         BufReader::new(fs::File::open(filter).unwrap())
             .read_to_end(&mut items)
             .unwrap();
         let r_hs: Result<HashSet<_>, _> = items
             .split(|&c| c == b'\n')
-            .map(trim_right_0d)
+            .map(trim_0d)
             .filter(|item| item.len() == 4)
             .map(Vec::from)
             .map(String::from_utf8)
             .collect();
-        (r_hs.unwrap(), false)
+        Some(r_hs.unwrap())
     } else {
-        (HashSet::new(), true)
+        None
     };
 
-    let out = args.output;
+    let recs: Vec<_> = parse_airport_primary_records(buf)
+        .filter(|rec| {
+            hs.as_ref()
+                .map_or(true, |hs| hs.contains(rec.icao_identifier))
+        })
+        .collect();
+
+    let airports: Vec<_> = recs.iter().map(Airport::from).collect();
+    let apt_idx = AirportIdx::new(&airports).unwrap();
+    let distances = DistancesIdx::from(&apt_idx);
+
     if args.aps {
-        print_aps(
-            parse_airport_primary_records(buf)
-                .filter(|rec| has_not_filter || hs.contains(rec.icao_identifier)),
-            out,
-        );
+        print_aps(&recs, &apt_idx, &distances, args.output);
     }
+
+    // let aps: Vec<_> = recs.iter().map(Airport::from).collect();
 }
 
-fn print_aps<'a>(recs: impl Iterator<Item = AirportPrimaryRecord<'a>>, out: Option<PathBuf>) {
-    let (mut stdout_write, mut file_write);
-    let writable: &mut dyn Write = if let Some(path) = out {
-        file_write = fs::File::create(path).unwrap();
-        &mut file_write
-    } else {
-        stdout_write = io::stdout().lock();
-        &mut stdout_write
-    };
-    let mut writable = BufWriter::new(writable);
+fn print_aps<'a: 'b, 'b>(
+    recs: &'b [AirportPrimaryRecord<'a>],
+    apt_idx: &AirportIdx,
+    distances_idx: &DistancesIdx,
+    out: Option<PathBuf>,
+) {
     let koak = Coord::from((
         &Latitude {
             degrees: 37,
@@ -105,38 +111,50 @@ fn print_aps<'a>(recs: impl Iterator<Item = AirportPrimaryRecord<'a>>, out: Opti
             hemisphere: LongitudeHemisphere::West,
         },
     ));
-    for rec in recs {
+    let tgt_name = "KLAS";
+    let &tgt = apt_idx.idx_by_icao.get(tgt_name).unwrap();
+
+    let (mut stdout_write, mut file_write);
+    let writable: &mut dyn Write = if let Some(path) = out {
+        file_write = fs::File::create(path).unwrap();
+        &mut file_write
+    } else {
+        stdout_write = io::stdout().lock();
+        &mut stdout_write
+    };
+    let mut writable = BufWriter::new(writable);
+    for (i, rec) in recs.iter().enumerate() {
+        let lat = &rec.airport_reference_point_latitude;
+        let lon = &rec.airport_reference_point_longitude;
+        let coord = (lat, lon).into();
         writeln!(
             &mut writable,
-            "{} ({}): {}°{}′{}.{:02}″{}({}), {}°{}′{}.{:02}″{}({}). Distance to KOAK: {:.01}",
+            "{} ({}): {}°{}′{}.{:02}″{} {}°{}′{}.{:02}″{} ({}, {}). Distance to KOAK: {:.01}. Distance to {tgt_name}: {:.01}",
             rec.icao_identifier,
             rec.airport_name,
-            rec.airport_reference_point_latitude.degrees,
-            rec.airport_reference_point_latitude.minutes,
-            rec.airport_reference_point_latitude.seconds,
-            rec.airport_reference_point_latitude.fractional_seconds,
-            match rec.airport_reference_point_latitude.hemisphere {
+            lat.degrees,
+            lat.minutes,
+            lat.seconds,
+            lat.fractional_seconds,
+            match lat.hemisphere {
                 LatitudeHemisphere::North => 'N',
                 LatitudeHemisphere::South => 'S',
             },
-            f64::from(&rec.airport_reference_point_latitude),
-            rec.airport_reference_point_longitude.degrees,
-            rec.airport_reference_point_longitude.minutes,
-            rec.airport_reference_point_longitude.seconds,
-            rec.airport_reference_point_longitude.fractional_seconds,
-            match rec.airport_reference_point_longitude.hemisphere {
+            lon.degrees,
+            lon.minutes,
+            lon.seconds,
+            lon.fractional_seconds,
+            match lon.hemisphere {
                 LongitudeHemisphere::East => 'E',
                 LongitudeHemisphere::West => 'W',
             },
-            f64::from(&rec.airport_reference_point_longitude),
+            f64::from(lat),
+            f64::from(lon),
             great_circle(
-                &koak,
-                &(
-                    &rec.airport_reference_point_latitude,
-                    &rec.airport_reference_point_longitude
-                )
-                    .into()
-            )
+                koak,
+                coord
+            ),
+            distances_idx.between(tgt, i).unwrap_or(f64::NAN)
         )
         .unwrap();
     }

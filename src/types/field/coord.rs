@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Longitude {
     pub hemisphere: LongitudeHemisphere,
@@ -73,7 +75,7 @@ impl From<(&Latitude, &Longitude)> for Coord {
     }
 }
 
-const RADIANS_PER_DEGREE: f64 = std::f64::consts::PI / 180.0;
+const RADIANS_PER_DEGREE: f64 = PI / 180.0;
 const FRAC_100: f64 = 1.0 / 100.0;
 const FRAC_60: f64 = 1.0 / 60.0;
 

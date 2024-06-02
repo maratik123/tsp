@@ -40,12 +40,17 @@ pub fn parse_alphanum(bytes: &[u8], allowed_len: impl RangeBounds<usize>) -> Opt
     parse_internal(bytes, allowed_len, is_alphanum)
 }
 
-// 5.1 All alpha and alpha/numeric fields will be left justified
-pub fn trim_right_0d(bytes: &[u8]) -> &[u8] {
+pub fn trim_0d(bytes: &[u8]) -> &[u8] {
     bytes
         .iter()
-        .rposition(|&c| c != b'\r')
-        .map_or_else(|| &bytes[..0], |i| &bytes[..=i])
+        .position(|&c| c != b'\r')
+        .and_then(|left| {
+            bytes
+                .iter()
+                .rposition(|&c| c != b'\r')
+                .map(|right| &bytes[left..=right])
+        })
+        .unwrap_or_else(|| &bytes[..0])
 }
 
 // 5.1 All alpha and alpha/numeric fields will be left justified
