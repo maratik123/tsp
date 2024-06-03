@@ -44,6 +44,9 @@ struct Args {
     /// beta
     #[clap(default_value = "1.5", long)]
     beta: f64,
+    /// show unfiltered
+    #[clap(short, long)]
+    unfiltered: bool,
 }
 
 fn main() {
@@ -96,7 +99,7 @@ fn main() {
     let distances = DistancesIdx::from(&apt_idx);
 
     let aco = Aco::new(&distances, None, None);
-    let aco = aco.aco(
+    let (aco, dist) = aco.aco(
         args.iterations,
         args.ants,
         1.0 - args.evaporation,
@@ -104,9 +107,10 @@ fn main() {
         args.beta,
     );
     println!("Selected cycle {aco:?}");
+    println!("Total nodes: {}", aco.len());
 
     if args.print_aps {
-        print_aps(&recs, &distances, &aco, args.output);
+        print_aps(&recs, &distances, &aco, dist, args.output);
     }
 }
 
@@ -114,6 +118,7 @@ fn print_aps<'a: 'b, 'b>(
     recs: &'b [AirportPrimaryRecord<'a>],
     distances_idx: &DistancesIdx,
     aco: &[u32],
+    selected_dist: f64,
     out: Option<PathBuf>,
 ) {
     let (mut stdout_write, mut file_write);
@@ -157,4 +162,5 @@ fn print_aps<'a: 'b, 'b>(
         )
         .unwrap();
     }
+    writeln!(&mut writable, "Total lengths: {selected_dist:.05}").unwrap();
 }

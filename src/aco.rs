@@ -52,12 +52,12 @@ impl<'a> Aco<'a> {
         degradation_factor: f64,
         alpha: f64,
         beta: f64,
-    ) -> Vec<u32> {
+    ) -> (Vec<u32>, f64) {
         match self.size {
             0 => {
-                return vec![];
+                return (vec![], 0.0);
             }
-            1 => return vec![0],
+            1 => return (vec![0], 0.0),
             _ => {}
         };
 
@@ -85,11 +85,11 @@ impl<'a> Aco<'a> {
 
                 match best_cycle_dist {
                     Some((_, best_distance)) if distance < &best_distance => {
-                        println!("[{i}] New cycle: {cycle_dist:?}");
+                        println!("[{i}] New cycle: {:?}, len: {:.05}", cycle, distance);
                         best_cycle_dist = Some(cycle_dist);
                     }
                     None => {
-                        println!("First cycle: {cycle_dist:?}");
+                        println!("First cycle: {:?}, len: {:.05}", cycle, distance);
                         best_cycle_dist = Some(cycle_dist);
                     }
                     _ => {}
@@ -99,12 +99,10 @@ impl<'a> Aco<'a> {
 
         println!("Best cycle: {best_cycle_dist:?}");
 
-        best_cycle_dist
-            .unwrap_or_else(|| {
-                #[allow(unreachable_code)]
-                !unreachable!("best_cycle is None")
-            })
-            .0
+        best_cycle_dist.unwrap_or_else(|| {
+            #[allow(unreachable_code)]
+            !unreachable!("best_cycle is None")
+        })
     }
 
     fn traverse_graph(
