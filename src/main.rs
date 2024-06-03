@@ -35,9 +35,15 @@ struct Args {
     /// Number of iterations
     #[clap(default_value = "100", short, long)]
     iterations: u32,
-    /// Evaporation rate
+    /// Evaporation rate (from 0 to 1)
     #[clap(default_value = "0.1", short, long)]
     evaporation: f64,
+    /// alpha
+    #[clap(default_value = "0.9", long)]
+    alpha: f64,
+    /// beta
+    #[clap(default_value = "1.5", long)]
+    beta: f64,
 }
 
 fn main() {
@@ -90,7 +96,13 @@ fn main() {
     let distances = DistancesIdx::from(&apt_idx);
 
     let aco = Aco::new(&distances, None, None);
-    let aco = aco.aco(args.iterations, args.ants, 1.0 - args.evaporation);
+    let aco = aco.aco(
+        args.iterations,
+        args.ants,
+        1.0 - args.evaporation,
+        args.alpha,
+        args.beta,
+    );
     println!("Selected cycle {aco:?}");
 
     if args.print_aps {

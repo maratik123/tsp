@@ -9,8 +9,6 @@ use crate::graph::GraphIdx;
 use crate::util::cycling;
 
 const INIT_INTENSITY_MULTIPLIER: f64 = 10.0;
-const ALPHA: f64 = 0.9;
-const BETA: f64 = 1.5;
 const MINIMAL_INTENSITY: f64 = 1e-5;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -47,7 +45,14 @@ impl<'a> Aco<'a> {
         }
     }
 
-    pub fn aco(&self, iterations: u32, ants: u32, degradation_factor: f64) -> Vec<u32> {
+    pub fn aco(
+        &self,
+        iterations: u32,
+        ants: u32,
+        degradation_factor: f64,
+        alpha: f64,
+        beta: f64,
+    ) -> Vec<u32> {
         match self.size {
             0 => {
                 return vec![];
@@ -62,7 +67,7 @@ impl<'a> Aco<'a> {
 
         for i in 0..iterations {
             let mut cycles: Vec<_> = (0..ants)
-                .map(|_| self.traverse_graph(None, &mut rng, &intensities))
+                .map(|_| self.traverse_graph(None, &mut rng, &intensities, alpha, beta))
                 .chain(best_cycle_dist.iter().cloned())
                 .collect();
             cycles.sort_unstable_by(|(_, dist1), (_, dist2)| dist1.total_cmp(dist2));
@@ -107,6 +112,8 @@ impl<'a> Aco<'a> {
         source_node: Option<u32>,
         rng: &mut ThreadRng,
         intensities: &GraphIdx<'_, f64>,
+        alpha: f64,
+        beta: f64,
     ) -> (Vec<u32>, f64) {
         match self.size {
             0 => return (vec![], 0.0),
@@ -152,14 +159,14 @@ impl<'a> Aco<'a> {
                                 unreachable!("No pheromones between {current} and {i}")
                             })
                             .max(MINIMAL_INTENSITY)
-                            .powf(ALPHA)
+                            .powf(alpha)
                             / self
                                 .dist_idx
                                 .between(current, i)
                                 .unwrap_or_else(|| {
                                     unreachable!("No distance between {current} and {i}")
                                 })
-                                .powf(BETA)
+                                .powf(beta)
                     }))
                     .unwrap_or_else(|e| unreachable!("No nodes to choose from: {e}"))
                     .sample(rng) as u32;
