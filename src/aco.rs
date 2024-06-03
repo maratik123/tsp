@@ -85,7 +85,10 @@ impl<'a> Aco<'a> {
 
                 match best_cycle_dist {
                     Some((_, best_distance)) if distance < &best_distance => {
-                        println!("[{i}] New cycle: {:?}, len: {:.05}", cycle, distance);
+                        println!(
+                            "New cycle: {:?}, len: {:.05}, iteration: [{i}]",
+                            cycle, distance
+                        );
                         best_cycle_dist = Some(cycle_dist);
                     }
                     None => {
