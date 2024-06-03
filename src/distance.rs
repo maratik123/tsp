@@ -1,43 +1,22 @@
-use std::marker::PhantomData;
+use crate::graph::GraphIdx;
 
-use crate::model::AirportIdx;
+use crate::model::{Airport, AirportIdx};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct DistancesIdx<'a> {
-    size: usize,
-    dists: Vec<f64>,
-    _pd: PhantomData<AirportIdx<'a>>,
+    pub graph: GraphIdx<'a, f64>,
 }
 
 impl<'a> DistancesIdx<'a> {
-    pub fn between(&self, apt1: usize, apt2: usize) -> Option<f64> {
-        if apt1 >= self.size || apt2 >= self.size {
-            return None;
-        }
-        if apt1 == apt2 {
-            return Some(0.0);
-        }
-        let (apt1, apt2) = if apt1 > apt2 {
-            (apt1, apt2)
-        } else {
-            (apt2, apt1)
-        };
-        Some(self.dists[apt1 * (apt1 - 1) / 2 + apt2])
+    pub fn between(&self, apt1: u32, apt2: u32) -> Option<f64> {
+        self.graph.between(0.0, apt1, apt2)
     }
 }
 
 impl<'a> From<&'a AirportIdx<'a>> for DistancesIdx<'a> {
-    fn from(AirportIdx { aps, .. }: &'a AirportIdx) -> Self {
-        let size = aps.len();
-        let dists = aps
-            .iter()
-            .enumerate()
-            .flat_map(|(apt1_i, apt1)| aps[..apt1_i].iter().map(|apt2| apt1.distance_to(apt2)))
-            .collect();
-        DistancesIdx {
-            size,
-            dists,
-            _pd: PhantomData,
+    fn from(apt_idx: &'a AirportIdx<'a>) -> Self {
+        Self {
+            graph: GraphIdx::new(apt_idx, Airport::distance_to),
         }
     }
 }
@@ -45,6 +24,7 @@ impl<'a> From<&'a AirportIdx<'a>> for DistancesIdx<'a> {
 #[cfg(test)]
 mod tests {
     use std::f64::consts::FRAC_PI_2;
+    use std::marker::PhantomData;
 
     use crate::math::great_circle;
     use crate::model::Airport;
@@ -128,8 +108,8 @@ mod tests {
         let apt_idx = AirportIdx::new(&airports).unwrap();
         let distances_idx = DistancesIdx::from(&apt_idx);
         let quarter = quarter();
-        for apt1 in 0..airports.len() {
-            for apt2 in 0..airports.len() {
+        for apt1 in 0..airports.len() as u32 {
+            for apt2 in 0..airports.len() as u32 {
                 assert_eq!(
                     distances_idx.between(apt1, apt2),
                     Some(if apt1 == apt2 { 0.0 } else { quarter })
@@ -149,9 +129,11 @@ mod tests {
         assert_eq!(
             distances_idx,
             DistancesIdx {
-                size: 3,
-                dists: vec![quarter; 3],
-                _pd: PhantomData
+                graph: GraphIdx {
+                    size: 3,
+                    edges: vec![quarter; 3],
+                    _pd: PhantomData
+                }
             }
         );
     }

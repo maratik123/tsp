@@ -305,19 +305,16 @@ pub fn parse_speed_limit_altitude(speed_limit_altitude: &[u8]) -> Option<Option<
 }
 
 // 5.16 Continuation Record Number
-pub fn parse_continuation_record_number(
-    continuation_record: u8,
-    is_primary: bool,
-) -> Option<usize> {
+pub fn parse_continuation_record_number(continuation_record: u8, is_primary: bool) -> Option<u8> {
     Some(if is_primary {
         match continuation_record {
-            b'0'..=b'1' => continuation_record as usize - b'0' as usize,
+            b'0'..=b'1' => continuation_record - b'0',
             _ => None?,
         }
     } else {
         match continuation_record {
-            b'2'..=b'9' => continuation_record as usize - b'0' as usize,
-            b'A'..=b'Z' => continuation_record as usize - b'A' as usize + 10,
+            b'2'..=b'9' => continuation_record - b'0',
+            b'A'..=b'Z' => continuation_record - b'A' + 10,
             _ => None?,
         }
     })

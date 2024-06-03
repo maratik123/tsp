@@ -5,16 +5,14 @@ use std::{fs, io};
 
 use clap::Parser;
 use clap_stdin::{FileOrStdin, Source};
-use tsp::distance::DistancesIdx;
 
-use tsp::math::great_circle;
+use tsp::aco::Aco;
+use tsp::distance::DistancesIdx;
 use tsp::model::{Airport, AirportIdx};
 use tsp::parser::file::parse_airport_primary_records;
-use tsp::types::field::coord::{
-    Coord, Latitude, LatitudeHemisphere, Longitude, LongitudeHemisphere,
-};
+use tsp::types::field::coord::{LatitudeHemisphere, LongitudeHemisphere};
 use tsp::types::record::AirportPrimaryRecord;
-use tsp::util::trim_0d;
+use tsp::util::{cycling, trim_0d};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -27,10 +25,19 @@ struct Args {
     output: Option<PathBuf>,
     /// Output airport primary records
     #[clap(short, long)]
-    aps: bool,
+    print_aps: bool,
     /// Filter file
     #[clap(short, long)]
     filter: Option<PathBuf>,
+    /// Number of ants
+    #[clap(default_value = "50", short, long)]
+    ants: u32,
+    /// Number of iterations
+    #[clap(default_value = "100", short, long)]
+    iterations: u32,
+    /// Evaporation rate
+    #[clap(default_value = "0.1", short, long)]
+    evaporation: f64,
 }
 
 fn main() {
@@ -82,38 +89,21 @@ fn main() {
     let apt_idx = AirportIdx::new(&airports).unwrap();
     let distances = DistancesIdx::from(&apt_idx);
 
-    if args.aps {
-        print_aps(&recs, &apt_idx, &distances, args.output);
-    }
+    let aco = Aco::new(&apt_idx, None, None);
+    let aco = aco.aco(args.iterations, args.ants, 1.0 - args.evaporation);
+    println!("Selected cycle {aco:?}");
 
-    // let aps: Vec<_> = recs.iter().map(Airport::from).collect();
+    if args.print_aps {
+        print_aps(&recs, &distances, &aco, args.output);
+    }
 }
 
 fn print_aps<'a: 'b, 'b>(
     recs: &'b [AirportPrimaryRecord<'a>],
-    apt_idx: &AirportIdx,
     distances_idx: &DistancesIdx,
+    aco: &[u32],
     out: Option<PathBuf>,
 ) {
-    let koak = Coord::from((
-        &Latitude {
-            degrees: 37,
-            minutes: 43,
-            seconds: 17,
-            fractional_seconds: 0,
-            hemisphere: LatitudeHemisphere::North,
-        },
-        &Longitude {
-            degrees: 122,
-            minutes: 13,
-            seconds: 15,
-            fractional_seconds: 0,
-            hemisphere: LongitudeHemisphere::West,
-        },
-    ));
-    let tgt_name = "KLAS";
-    let &tgt = apt_idx.idx_by_icao.get(tgt_name).unwrap();
-
     let (mut stdout_write, mut file_write);
     let writable: &mut dyn Write = if let Some(path) = out {
         file_write = fs::File::create(path).unwrap();
@@ -123,13 +113,15 @@ fn print_aps<'a: 'b, 'b>(
         &mut stdout_write
     };
     let mut writable = BufWriter::new(writable);
-    for (i, rec) in recs.iter().enumerate() {
+
+    for (i, j, rec, rec_next) in
+        cycling(aco).map(|(&i, &j)| (i, j, recs[i as usize], recs[j as usize]))
+    {
         let lat = &rec.airport_reference_point_latitude;
         let lon = &rec.airport_reference_point_longitude;
-        let coord = (lat, lon).into();
         writeln!(
             &mut writable,
-            "{} ({}): {}°{}′{}.{:02}″{} {}°{}′{}.{:02}″{} ({}, {}). Distance to KOAK: {:.01}. Distance to {tgt_name}: {:.01}",
+            "{} ({}): {}°{}′{}.{:02}″{} {}°{}′{}.{:02}″{}. Distance to next {}: {:.01}",
             rec.icao_identifier,
             rec.airport_name,
             lat.degrees,
@@ -148,13 +140,8 @@ fn print_aps<'a: 'b, 'b>(
                 LongitudeHemisphere::East => 'E',
                 LongitudeHemisphere::West => 'W',
             },
-            f64::from(lat),
-            f64::from(lon),
-            great_circle(
-                koak,
-                coord
-            ),
-            distances_idx.between(tgt, i).unwrap_or(f64::NAN)
+            rec_next.icao_identifier,
+            distances_idx.between(i, j).unwrap_or(f64::NAN)
         )
         .unwrap();
     }

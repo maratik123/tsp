@@ -13,7 +13,7 @@ pub struct AirportPrimaryRecord<'a> {
     pub icao_code: &'a str,
     pub enriched_section_code: EnrichedSectionCode,
     pub ata_designator: &'a str,
-    pub continuation_record_number: usize,
+    pub continuation_record_number: u8,
     pub speed_limit_altitude: Option<Altitude>,
     pub longest_runway: u16,
     pub ifr_capability: bool,

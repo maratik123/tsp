@@ -118,3 +118,10 @@ pub fn parse_blank_arr(blank: &[u8], allowed_len: impl RangeBounds<usize>) -> Op
         None
     }
 }
+
+pub fn cycling<T>(it: &[T]) -> impl Iterator<Item = (&T, &T)> {
+    it.iter().zip(it.iter().skip(1)).chain(
+        it.first()
+            .and_then(|first| it.last().map(|last| (last, first))),
+    )
+}

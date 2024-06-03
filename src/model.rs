@@ -37,7 +37,7 @@ impl<'a: 'b, 'b> From<&'b AirportPrimaryRecord<'a>> for Airport {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AirportIdx<'a> {
     pub aps: &'a [Airport],
-    pub idx_by_icao: HashMap<&'a str, usize>,
+    pub idx_by_icao: HashMap<&'a str, u32>,
 }
 
 impl<'a> AirportIdx<'a> {
@@ -45,7 +45,7 @@ impl<'a> AirportIdx<'a> {
         let idx_by_icao: HashMap<_, _> = aps
             .iter()
             .enumerate()
-            .map(|(i, apt)| (&apt.icao[..], i))
+            .map(|(i, apt)| (&apt.icao[..], i as u32))
             .collect();
         if aps.len() != idx_by_icao.len() {
             None
