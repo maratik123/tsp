@@ -1,12 +1,12 @@
-use crate::distance::DistancesIdx;
-use crate::graph::GraphIdx;
-use crate::model::AirportIdx;
-use crate::util::cycling;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use roaring::RoaringBitmap;
+
+use crate::distance::DistancesIdx;
+use crate::graph::GraphIdx;
+use crate::util::cycling;
 
 const INIT_INTENSITY_MULTIPLIER: f64 = 10.0;
 const ALPHA: f64 = 0.9;
@@ -16,17 +16,14 @@ const MINIMAL_INTENSITY: f64 = 1e-5;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Aco<'a> {
     size: u32,
-    apt_idx: &'a AirportIdx<'a>,
-    dist_idx: DistancesIdx<'a>,
+    dist_idx: &'a DistancesIdx<'a>,
     intensity: f64,
     q: f64,
 }
 
 impl<'a> Aco<'a> {
-    pub fn new(apt_idx: &'a AirportIdx<'a>, intensity: Option<f64>, q: Option<f64>) -> Self {
-        let size = apt_idx.aps.len() as u32;
-
-        let dist_idx = DistancesIdx::from(apt_idx);
+    pub fn new(dist_idx: &'a DistancesIdx<'a>, intensity: Option<f64>, q: Option<f64>) -> Self {
+        let size = dist_idx.graph.size;
 
         let mean_dist = dist_idx.graph.triangle_sum() / (size * (size - 1) / 2) as f64;
 
@@ -44,7 +41,6 @@ impl<'a> Aco<'a> {
 
         Self {
             size,
-            apt_idx,
             dist_idx,
             intensity,
             q,
@@ -62,7 +58,7 @@ impl<'a> Aco<'a> {
 
         let mut rng = rand::thread_rng();
         let mut best_cycle_dist: Option<(Vec<_>, f64)> = None;
-        let mut intensities = GraphIdx::new(self.apt_idx, |_, _| self.intensity);
+        let mut intensities = GraphIdx::transform_const(&self.dist_idx.graph, self.intensity);
 
         for i in 0..iterations {
             let mut cycles: Vec<_> = (0..ants)

@@ -95,6 +95,14 @@ impl<'a, T: Copy> GraphIdx<'a, T> {
             _pd: PhantomData,
         }
     }
+
+    pub fn transform_const<B: Copy>(&self, c: B) -> GraphIdx<'a, B> {
+        GraphIdx {
+            size: self.size,
+            edges: vec![c; self.edges.len()],
+            _pd: PhantomData,
+        }
+    }
 }
 impl<'a, T: Copy + Sum<T>> GraphIdx<'a, T> {
     pub fn triangle_sum(&self) -> T {

@@ -89,7 +89,7 @@ fn main() {
     let apt_idx = AirportIdx::new(&airports).unwrap();
     let distances = DistancesIdx::from(&apt_idx);
 
-    let aco = Aco::new(&apt_idx, None, None);
+    let aco = Aco::new(&distances, None, None);
     let aco = aco.aco(args.iterations, args.ants, 1.0 - args.evaporation);
     println!("Selected cycle {aco:?}");
 
