@@ -15,9 +15,10 @@ use tsp::aco::Aco;
 use tsp::distance::DistancesIdx;
 use tsp::model::{Airport, AirportIdx};
 use tsp::parser::file::parse_airport_primary_records;
+use tsp::scaler::Scaler;
 use tsp::types::field::coord::{Coord, LatitudeHemisphere, LongitudeHemisphere};
 use tsp::types::record::AirportPrimaryRecord;
-use tsp::util::{cycling, trim_0d, Scaler};
+use tsp::util::{cycling, trim_0d};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

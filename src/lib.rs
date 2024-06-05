@@ -5,5 +5,6 @@ pub mod math;
 pub mod model;
 pub mod parser;
 pub mod reusable_weighted_index;
+pub mod scaler;
 pub mod types;
 pub mod util;
