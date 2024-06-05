@@ -1,5 +1,3 @@
-use rust_decimal::Decimal;
-
 use crate::types::field::coord::{Latitude, LatitudeHemisphere, Longitude, LongitudeHemisphere};
 use crate::types::field::{
     Altitude, CycleDate, MagneticTrueIndicator, MagneticVariation, PublicMilitaryIndicator,
@@ -9,6 +7,7 @@ use crate::util::{
     parse_alpha, parse_alphanum, parse_blank_arr, parse_num_u16, parse_num_u32, parse_num_u8,
     trim_right_spaces,
 };
+use rust_decimal::Decimal;
 
 pub mod section_code;
 

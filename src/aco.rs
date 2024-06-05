@@ -1,12 +1,14 @@
-use rand::distributions::Distribution;
-use rand::distributions::WeightedIndex;
-use rand::rngs::ThreadRng;
-use rand::Rng;
-use roaring::RoaringBitmap;
-
 use crate::distance::DistancesIdx;
 use crate::graph::GraphIdx;
+use crate::reusable_weighted_index::CumulativeWeightsWrapper;
 use crate::util::cycling;
+use bitvec::bitvec;
+use bitvec::vec::BitVec;
+use rand::distributions::Distribution;
+use rand::{random, Rng};
+use rand_pcg::Pcg64Mcg;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use rayon::slice::ParallelSliceMut;
 
 const INIT_INTENSITY_MULTIPLIER: f64 = 10.0;
 const MINIMAL_INTENSITY: f64 = 1e-5;
@@ -61,32 +63,67 @@ impl<'a> Aco<'a> {
             _ => {}
         };
 
-        let mut rng = rand::thread_rng();
         let mut best_cycle_dist: Option<(Vec<_>, f64)> = None;
         let mut intensities = GraphIdx::transform_const(&self.dist_idx.graph, self.intensity);
+        let mut weights = GraphIdx::transform_const(&self.dist_idx.graph, 0.0);
+
+        let mut cycles = Vec::with_capacity(ants as usize + 1);
 
         for i in 0..iterations {
-            let mut cycles: Vec<_> = (0..ants)
-                .map(|_| self.traverse_graph(None, &mut rng, &intensities, alpha, beta))
-                .chain(best_cycle_dist.iter().cloned())
-                .collect();
-            cycles.sort_unstable_by(|(_, dist1), (_, dist2)| dist1.total_cmp(dist2));
+            self.dist_idx
+                .graph
+                .merge_parallel(&intensities, &mut weights, |dist, intensity| {
+                    intensity.max(MINIMAL_INTENSITY).powf(alpha) / dist.powf(beta)
+                })
+                .unwrap_or_else(|| {
+                    unreachable!(
+                        "Mismatched graph sizes: {} vs {}",
+                        self.dist_idx.graph.size, intensities.size
+                    )
+                });
+            (0..ants)
+                .into_par_iter()
+                .map_init(
+                    || {
+                        (
+                            Pcg64Mcg::new(random()),
+                            bitvec![1; self.size as usize],
+                            CumulativeWeightsWrapper::with_capacity(self.size as usize),
+                        )
+                    },
+                    |(rng, not_visited, cumulative_weights_wrapper), _| {
+                        self.traverse_graph(
+                            None,
+                            &weights,
+                            rng,
+                            not_visited,
+                            cumulative_weights_wrapper,
+                        )
+                    },
+                )
+                .collect_into_vec(&mut cycles);
+            if let Some(best_cycle_dist) = &best_cycle_dist {
+                cycles.push(best_cycle_dist.clone());
+            }
+            cycles.par_sort_unstable_by(|(_, dist1), (_, dist2)| dist1.total_cmp(dist2));
             cycles.truncate((cycles.len() + 1) / 2);
 
-            for cycle_dist in cycles {
+            for cycle_dist in cycles.drain(..) {
+                intensities.transform_inplace(|value| *value *= degradation_factor);
+
                 let (cycle, distance) = &cycle_dist;
                 let delta = self.q / distance;
+
                 for (&node1, &node2) in cycling(cycle) {
                     *intensities.between_mut(node1, node2).unwrap_or_else(|| {
                         unreachable!("No pheromones between {node1} and {node2}")
                     }) += delta;
                 }
-                intensities.transform_inplace(|value| *value *= degradation_factor);
 
                 match best_cycle_dist {
                     Some((_, best_distance)) if distance < &best_distance => {
                         println!(
-                            "New cycle: {:?}, len: {:.05}, iteration: [{i}]",
+                            "New cycle: {:?}, len: {:.06}, iteration: [{i}]",
                             cycle, distance
                         );
                         best_cycle_dist = Some(cycle_dist);
@@ -111,10 +148,10 @@ impl<'a> Aco<'a> {
     fn traverse_graph(
         &self,
         source_node: Option<u32>,
-        rng: &mut ThreadRng,
-        intensities: &GraphIdx<'_, f64>,
-        alpha: f64,
-        beta: f64,
+        weights: &GraphIdx<f64>,
+        rng: &mut impl Rng,
+        not_visited: &mut BitVec,
+        cumulative_weights_wrapper: &mut CumulativeWeightsWrapper<f64>,
     ) -> (Vec<u32>, f64) {
         match self.size {
             0 => return (vec![], 0.0),
@@ -124,9 +161,7 @@ impl<'a> Aco<'a> {
 
         let source_node = source_node.unwrap_or_else(|| rng.gen_range(0..self.size));
 
-        let mut not_visited = RoaringBitmap::new();
-        not_visited.insert_range(0..self.size);
-        not_visited.remove(source_node);
+        not_visited.set(source_node as usize, false);
 
         let mut cycle = Vec::with_capacity(self.size as usize);
         cycle.push(source_node);
@@ -136,8 +171,9 @@ impl<'a> Aco<'a> {
         let mut current = source_node;
 
         loop {
-            let chosen = match not_visited.len() {
+            let chosen = match not_visited.count_ones() {
                 0 => {
+                    not_visited.fill(true);
                     break (
                         cycle,
                         total_length
@@ -147,37 +183,29 @@ impl<'a> Aco<'a> {
                                 .unwrap_or_else(|| {
                                     unreachable!("No distance between {current} and {source_node}")
                                 }),
-                    )
+                    );
                 }
                 1 => not_visited
-                    .min()
+                    .first_one()
                     .unwrap_or_else(|| unreachable!("not_visited should contain one element")),
                 _ => {
-                    let chosen = WeightedIndex::new(not_visited.iter().map(|i| {
-                        intensities
-                            .between(0.0, current, i)
-                            .unwrap_or_else(|| {
-                                unreachable!("No pheromones between {current} and {i}")
+                    let wi = cumulative_weights_wrapper
+                        .fill(not_visited.iter_ones().map(|i| {
+                            let i = i as u32;
+                            weights.between(0.0, current, i).unwrap_or_else(|| {
+                                unreachable!("No weights between {current} and {i}")
                             })
-                            .max(MINIMAL_INTENSITY)
-                            .powf(alpha)
-                            / self
-                                .dist_idx
-                                .between(current, i)
-                                .unwrap_or_else(|| {
-                                    unreachable!("No distance between {current} and {i}")
-                                })
-                                .powf(beta)
-                    }))
-                    .unwrap_or_else(|e| unreachable!("No nodes to choose from: {e}"))
-                    .sample(rng) as u32;
+                        }))
+                        .unwrap_or_else(|e| unreachable!("No nodes to choose from: {e}"));
+                    let chosen = wi.sample(rng);
                     not_visited
-                        .iter()
-                        .nth(chosen as usize)
+                        .iter_ones()
+                        .nth(chosen)
                         .unwrap_or_else(|| unreachable!("No node in {chosen} position"))
                 }
             };
-            not_visited.remove(chosen);
+            not_visited.set(chosen, false);
+            let chosen = chosen as u32;
             cycle.push(chosen);
             total_length += self
                 .dist_idx

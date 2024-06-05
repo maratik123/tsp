@@ -1,4 +1,5 @@
 use crate::model::{Airport, AirportIdx};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::iter::Sum;
 use std::marker::PhantomData;
 
@@ -80,6 +81,29 @@ impl<'a, T: Copy> GraphIdx<'a, T> {
                 .collect(),
             _pd: PhantomData,
         })
+    }
+
+    pub fn merge_parallel<B, C>(
+        &self,
+        other: &GraphIdx<'a, B>,
+        target: &mut GraphIdx<'a, C>,
+        f: impl (Fn(T, B) -> C) + Sync,
+    ) -> Option<()>
+    where
+        T: Send + Sync,
+        B: Send + Sync + Copy,
+        C: Send + Sync + Copy,
+    {
+        if self.size != other.size {
+            return None;
+        }
+        target.size = self.size;
+        self.edges
+            .par_iter()
+            .zip(&other.edges)
+            .map(|(&a, &b)| f(a, b))
+            .collect_into_vec(&mut target.edges);
+        Some(())
     }
 
     pub fn transform_inplace(&mut self, f: impl Fn(&mut T)) {

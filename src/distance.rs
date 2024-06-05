@@ -1,5 +1,4 @@
 use crate::graph::GraphIdx;
-
 use crate::model::{Airport, AirportIdx};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
