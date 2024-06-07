@@ -1,7 +1,7 @@
 use crate::distance::DistancesIdx;
 use crate::graph::GraphIdx;
 use crate::reusable_weighted_index::CumulativeWeightsWrapper;
-use crate::util::cycling;
+use crate::util::{block_kahan_sum, cycling, KahanAdder};
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use rand::distributions::Distribution;
@@ -108,9 +108,9 @@ impl<'a> Aco<'a> {
             cycles.par_sort_unstable_by(|(_, dist1), (_, dist2)| dist1.total_cmp(dist2));
             cycles.truncate((cycles.len() + 1) / 2);
 
-            for cycle_dist in cycles.drain(..) {
-                intensities.transform_inplace(|value| *value *= degradation_factor);
+            intensities.transform_inplace(|value| *value *= degradation_factor);
 
+            for cycle_dist in cycles.drain(..) {
                 let (cycle, distance) = &cycle_dist;
                 let delta = self.q / distance;
 
@@ -166,9 +166,8 @@ impl<'a> Aco<'a> {
         let mut cycle = Vec::with_capacity(self.size as usize);
         cycle.push(source_node);
 
-        let mut total_length = 0.0;
-
         let mut current = source_node;
+        let mut total_dist = KahanAdder::default();
 
         loop {
             let chosen = match not_visited.count_ones() {
@@ -176,13 +175,13 @@ impl<'a> Aco<'a> {
                     not_visited.fill(true);
                     break (
                         cycle,
-                        total_length
-                            + self
-                                .dist_idx
+                        total_dist.push_and_result(
+                            self.dist_idx
                                 .between(current, source_node)
                                 .unwrap_or_else(|| {
                                     unreachable!("No distance between {current} and {source_node}")
                                 }),
+                        ),
                     );
                 }
                 1 => not_visited
@@ -207,10 +206,11 @@ impl<'a> Aco<'a> {
             not_visited.set(chosen, false);
             let chosen = chosen as u32;
             cycle.push(chosen);
-            total_length += self
-                .dist_idx
-                .between(current, chosen)
-                .unwrap_or_else(|| unreachable!("No distance between {current} and {chosen}"));
+            total_dist.push_mut(
+                self.dist_idx
+                    .between(current, chosen)
+                    .unwrap_or_else(|| unreachable!("No distance between {current} and {chosen}")),
+            );
             current = chosen;
         }
     }
