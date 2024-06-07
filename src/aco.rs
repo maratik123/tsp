@@ -1,7 +1,7 @@
 use crate::distance::DistancesIdx;
 use crate::graph::GraphIdx;
 use crate::reusable_weighted_index::CumulativeWeightsWrapper;
-use crate::util::{block_kahan_sum, cycling, KahanAdder};
+use crate::util::{cycling, KahanAdder};
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use rand::distributions::Distribution;
