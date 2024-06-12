@@ -1,6 +1,6 @@
+use crate::kahan::kahan_sum;
 use crate::model::{Airport, AirportIdx};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use std::iter::Sum;
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -128,8 +128,8 @@ impl<'a, T: Copy> GraphIdx<'a, T> {
         }
     }
 }
-impl<'a, T: Copy + Sum<T>> GraphIdx<'a, T> {
-    pub fn triangle_sum(&self) -> T {
-        self.edges.iter().copied().sum()
+impl<'a> GraphIdx<'a, f64> {
+    pub fn triangle_sum(&self) -> f64 {
+        kahan_sum(self.edges.iter().copied())
     }
 }

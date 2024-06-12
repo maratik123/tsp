@@ -1,7 +1,8 @@
 use crate::distance::DistancesIdx;
 use crate::graph::GraphIdx;
+use crate::kahan::KahanAdder;
 use crate::reusable_weighted_index::CumulativeWeightsWrapper;
-use crate::util::{cycling, KahanAdder};
+use crate::util::cycling;
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use rand::distributions::Distribution;
@@ -122,14 +123,11 @@ impl<'a> Aco<'a> {
 
                 match best_cycle_dist {
                     Some((_, best_distance)) if distance < &best_distance => {
-                        println!(
-                            "New cycle: {:?}, len: {:.06}, iteration: [{i}]",
-                            cycle, distance
-                        );
+                        println!("New cycle: {cycle:?}, len: {distance:.06}, iteration: [{i}]");
                         best_cycle_dist = Some(cycle_dist);
                     }
                     None => {
-                        println!("First cycle: {:?}, len: {:.05}", cycle, distance);
+                        println!("First cycle: {cycle:?}, len: {distance:.05}");
                         best_cycle_dist = Some(cycle_dist);
                     }
                     _ => {}

@@ -1,6 +1,7 @@
 pub mod aco;
 pub mod distance;
 pub mod graph;
+pub mod kahan;
 pub mod math;
 pub mod model;
 pub mod parser;
