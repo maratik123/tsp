@@ -43,7 +43,7 @@ cargo run --release -- FAACIFP18 -a 30 -i 1000 -e 0.1 -p --alpha 1 --beta 3 --im
 
 This utility parses data in ARINC 424 format.
 
-Then build airport records and filters them using provided list from file,
+Then builds airport records and filters them using provided list from file,
 mentioned in `-f` key (just column of ICAO identifiers, see examples in [res](res) directory).
 
 After that utility tries to build as much as possible optimal pathway between filtered records.
