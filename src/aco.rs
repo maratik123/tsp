@@ -95,7 +95,7 @@ impl<'a> Aco<'a> {
                             CumulativeWeightsWrapper::with_capacity(self.size as usize),
                         )
                     },
-                    |(rng, not_visited, cumulative_weights_wrapper), ant| loop {
+                    |(rng, not_visited, cumulative_weights_wrapper), _| loop {
                         if let Some((cycle, dist)) = self.traverse_graph(
                             None,
                             &weights,
