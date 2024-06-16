@@ -22,22 +22,26 @@ Usage examples (considering, that file `FAACIFP18` lays in this directory):
 1. Generate cyclic pathway between top largest and medium US hubs, with minimal leg distance 500 km. Generated
    image (`aco.png`) will be placed in current directory:
 
-```bash
-cargo run --release -- FAACIFP18 -f res/large_medium_hubs -a 30 -i 100000 -e 0.1 -p --alpha 1 --beta 3 --images . -m 500
-```
+  ```bash
+  cargo run --release -- FAACIFP18 -f res/large_medium_hubs -a 30 -i 100000 -e 0.1 -p --alpha 1 --beta 3 --images . -m 500
+  ```
 
 2. Generate almost optimal cyclic pathway between top largest US hubs. Generated image (`aco.png`) will be placed
    in `img` directory:
 
-```bash
-cargo run --release -- FAACIFP18 -f res/large_hubs -a 30 -i 100000 -e 0.1 -p --alpha 1 --beta 3 --images ./img
-```
+  ```bash
+  cargo run --release -- FAACIFP18 -f res/large_hubs -a 30 -i 100000 -e 0.1 -p --alpha 1 --beta 3 --images ./img
+  ```
 
 3. Generate optimal as much as possible pathway between all airports from `FAACIFP18`:
 
-```bash
-cargo run --release -- FAACIFP18 -a 30 -i 1000 -e 0.1 -p --alpha 1 --beta 3 --images ./img
-```
+  ```bash
+  cargo run --release -- FAACIFP18 -a 30 -i 1000 -e 0.1 -p --alpha 1 --beta 3 --images ./img
+  ```
+
+# Examples
+
+See [here](examples/README.md).
 
 # Background
 
@@ -62,5 +66,9 @@ Parameters that affects the speed to find suitable result is:
 * `-i` - count of iterations to find solution. The more is better, try to use values between `1000` and `10000000`.
   YMMV on your CPU.
 
-NB: May be it is needed to run more than once, because the solutions on each iteration has the tendency to lock up on
-local optimum (not global).
+NB:
+
+1. May be it is needed to run more than once, because the solutions on each iteration has the tendency to lock up on
+   local optimum (not global).
+2. It is useful to define environment variable `RUSTFLAGS="-C target-cpu=native"` during utility run.
+   Also consider to use [Link time optimization](https://doc.rust-lang.org/cargo/reference/profiles.html#lto).
