@@ -65,16 +65,19 @@ impl<'a> Aco<'a> {
         };
 
         let mut best_cycle_dist: Option<(Vec<_>, f64)> = None;
-        let mut intensities = GraphIdx::transform_const(&self.dist_idx.graph, self.intensity);
-        let mut weights = GraphIdx::transform_const(&self.dist_idx.graph, 0.0);
+        let mut intensities =
+            GraphIdx::transform(&self.dist_idx.graph, |d| d.map(|_| self.intensity));
+        let mut weights = GraphIdx::transform_const(&self.dist_idx.graph, None);
 
         let mut cycles = Vec::with_capacity(ants as usize + 1);
 
         for i in 0..iterations {
             self.dist_idx
                 .graph
-                .merge_parallel(&intensities, &mut weights, |dist, intensity| {
-                    intensity.max(MINIMAL_INTENSITY).powf(alpha) / dist.powf(beta)
+                .merge_parallel_into(&intensities, &mut weights, |dist, intensity| {
+                    intensity.zip(dist).map(|(intensity, dist)| {
+                        intensity.max(MINIMAL_INTENSITY).powf(alpha) / dist.powf(beta)
+                    })
                 })
                 .unwrap_or_else(|| {
                     unreachable!(
@@ -92,14 +95,18 @@ impl<'a> Aco<'a> {
                             CumulativeWeightsWrapper::with_capacity(self.size as usize),
                         )
                     },
-                    |(rng, not_visited, cumulative_weights_wrapper), _| {
-                        self.traverse_graph(
+                    |(rng, not_visited, cumulative_weights_wrapper), ant| loop {
+                        if let Some((cycle, dist)) = self.traverse_graph(
                             None,
                             &weights,
                             rng,
                             not_visited,
                             cumulative_weights_wrapper,
-                        )
+                        ) {
+                            if cycle.len() == self.size as usize {
+                                break (cycle, dist);
+                            }
+                        }
                     },
                 )
                 .collect_into_vec(&mut cycles);
@@ -109,16 +116,24 @@ impl<'a> Aco<'a> {
             cycles.par_sort_unstable_by(|(_, dist1), (_, dist2)| dist1.total_cmp(dist2));
             cycles.truncate((cycles.len() + 1) / 2);
 
-            intensities.transform_inplace(|value| *value *= degradation_factor);
+            intensities.transform_inplace(|value| {
+                if let Some(value) = value {
+                    *value *= degradation_factor;
+                }
+            });
 
             for cycle_dist in cycles.drain(..) {
                 let (cycle, distance) = &cycle_dist;
                 let delta = self.q / distance;
 
                 for (&node1, &node2) in cycling(cycle) {
-                    *intensities.between_mut(node1, node2).unwrap_or_else(|| {
-                        unreachable!("No pheromones between {node1} and {node2}")
-                    }) += delta;
+                    if let Some(intencity) =
+                        intensities.between_mut(node1, node2).unwrap_or_else(|| {
+                            unreachable!("No pheromones between {node1} and {node2}")
+                        })
+                    {
+                        *intencity += delta;
+                    }
                 }
 
                 match best_cycle_dist {
@@ -146,14 +161,14 @@ impl<'a> Aco<'a> {
     fn traverse_graph(
         &self,
         source_node: Option<u32>,
-        weights: &GraphIdx<f64>,
+        weights: &GraphIdx<Option<f64>>,
         rng: &mut impl Rng,
         not_visited: &mut BitVec,
         cumulative_weights_wrapper: &mut CumulativeWeightsWrapper<f64>,
-    ) -> (Vec<u32>, f64) {
+    ) -> Option<(Vec<u32>, f64)> {
         match self.size {
-            0 => return (vec![], 0.0),
-            1 => return (vec![0], 0.0),
+            0 => return Some((vec![], 0.0)),
+            1 => return Some((vec![0], 0.0)),
             _ => {}
         }
 
@@ -171,16 +186,10 @@ impl<'a> Aco<'a> {
             let chosen = match not_visited.count_ones() {
                 0 => {
                     not_visited.fill(true);
-                    break (
-                        cycle,
-                        total_dist.push_and_result(
-                            self.dist_idx
-                                .between(current, source_node)
-                                .unwrap_or_else(|| {
-                                    unreachable!("No distance between {current} and {source_node}")
-                                }),
-                        ),
-                    );
+                    break self
+                        .dist_idx
+                        .between(current, source_node)
+                        .map(|dist| (cycle, total_dist.push_and_result(dist)));
                 }
                 1 => not_visited
                     .first_one()
@@ -189,11 +198,16 @@ impl<'a> Aco<'a> {
                     let wi = cumulative_weights_wrapper
                         .fill(not_visited.iter_ones().map(|i| {
                             let i = i as u32;
-                            weights.between(0.0, current, i).unwrap_or_else(|| {
-                                unreachable!("No weights between {current} and {i}")
-                            })
+                            // todo: do not account in weight map unacceptable distances
+                            // todo: as it leads to useless idle cycles
+                            weights
+                                .between(None, current, i)
+                                .unwrap_or_else(|| {
+                                    unreachable!("No weights between {current} and {i}")
+                                })
+                                .unwrap_or(0.0)
                         }))
-                        .unwrap_or_else(|e| unreachable!("No nodes to choose from: {e}"));
+                        .ok()?;
                     let chosen = wi.sample(rng);
                     not_visited
                         .iter_ones()
@@ -204,11 +218,7 @@ impl<'a> Aco<'a> {
             not_visited.set(chosen, false);
             let chosen = chosen as u32;
             cycle.push(chosen);
-            total_dist.push_mut(
-                self.dist_idx
-                    .between(current, chosen)
-                    .unwrap_or_else(|| unreachable!("No distance between {current} and {chosen}")),
-            );
+            total_dist.push_mut(self.dist_idx.between(current, chosen)?);
             current = chosen;
         }
     }

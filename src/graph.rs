@@ -83,7 +83,7 @@ impl<'a, T: Copy> GraphIdx<'a, T> {
         })
     }
 
-    pub fn merge_parallel<B, C>(
+    pub fn merge_parallel_into<B, C>(
         &self,
         other: &GraphIdx<'a, B>,
         target: &mut GraphIdx<'a, C>,
@@ -131,5 +131,11 @@ impl<'a, T: Copy> GraphIdx<'a, T> {
 impl<'a> GraphIdx<'a, f64> {
     pub fn triangle_sum(&self) -> f64 {
         kahan_sum(self.edges.iter().copied())
+    }
+}
+
+impl<'a> GraphIdx<'a, Option<f64>> {
+    pub fn triangle_sum(&self) -> f64 {
+        kahan_sum(self.edges.iter().flatten().copied())
     }
 }

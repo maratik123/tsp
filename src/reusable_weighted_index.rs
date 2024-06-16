@@ -95,7 +95,9 @@ pub struct ReusableWeightedIndex<'a, X: SampleUniform + PartialOrd> {
     weight_distribution: X::Sampler,
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+/// Just a wrapper to surround internal persistent storage to reuse in [`ReusableWeightedIndex`]
+/// instances.
+#[derive(Debug, Clone, PartialEq)]
 pub struct CumulativeWeightsWrapper<X> {
     cumulative_weights: Vec<X>,
 }
@@ -111,6 +113,12 @@ impl<X: SampleUniform + PartialOrd> CumulativeWeightsWrapper<X> {
         Self {
             cumulative_weights: Vec::with_capacity(capacity),
         }
+    }
+}
+
+impl<X: SampleUniform + PartialOrd> Default for CumulativeWeightsWrapper<X> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

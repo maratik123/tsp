@@ -56,6 +56,9 @@ struct Args {
     /// Output images directory
     #[clap(long)]
     images: Option<PathBuf>,
+    /// Minimal allowable distance
+    #[clap(short, long)]
+    min_dist: Option<f64>,
 }
 
 fn main() {
@@ -105,7 +108,7 @@ fn main() {
 
     let airports: Vec<_> = recs.iter().map(Airport::from).collect();
     let apt_idx = AirportIdx::new(&airports).unwrap();
-    let distances = DistancesIdx::from(&apt_idx);
+    let distances = DistancesIdx::from(&apt_idx, args.min_dist);
 
     let aco = Aco::new(&distances, None, None);
     let (aco, dist) = aco.aco(

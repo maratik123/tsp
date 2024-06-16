@@ -1,21 +1,22 @@
 use crate::graph::GraphIdx;
-use crate::model::{Airport, AirportIdx};
+use crate::model::AirportIdx;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct DistancesIdx<'a> {
-    pub graph: GraphIdx<'a, f64>,
+    pub graph: GraphIdx<'a, Option<f64>>,
 }
 
 impl<'a> DistancesIdx<'a> {
     pub fn between(&self, apt1: u32, apt2: u32) -> Option<f64> {
-        self.graph.between(0.0, apt1, apt2)
+        self.graph.between(None, apt1, apt2).flatten()
     }
-}
 
-impl<'a> From<&'a AirportIdx<'a>> for DistancesIdx<'a> {
-    fn from(apt_idx: &'a AirportIdx<'a>) -> Self {
+    pub fn from(apt_idx: &'a AirportIdx<'a>, min_dist: Option<f64>) -> Self {
         Self {
-            graph: GraphIdx::new(apt_idx, Airport::distance_to),
+            graph: GraphIdx::new(apt_idx, |apt1, apt2| {
+                Some(apt1.distance_to(apt2))
+                    .filter(|&dist| min_dist.map(|min_dist| dist >= min_dist).unwrap_or(true))
+            }),
         }
     }
 }
@@ -105,13 +106,13 @@ mod tests {
     fn idx_between_test() {
         let airports = airports_template();
         let apt_idx = AirportIdx::new(&airports).unwrap();
-        let distances_idx = DistancesIdx::from(&apt_idx);
+        let distances_idx = DistancesIdx::from(&apt_idx, None);
         let quarter = quarter();
         for apt1 in 0..airports.len() as u32 {
             for apt2 in 0..airports.len() as u32 {
                 assert_eq!(
                     distances_idx.between(apt1, apt2),
-                    Some(if apt1 == apt2 { 0.0 } else { quarter })
+                    if apt1 == apt2 { None } else { Some(quarter) }
                 )
             }
             assert_eq!(distances_idx.between(3, apt1), None);
@@ -123,14 +124,14 @@ mod tests {
     fn test_distances_idx() {
         let airports = airports_template();
         let apt_idx = AirportIdx::new(&airports).unwrap();
-        let distances_idx = DistancesIdx::from(&apt_idx);
+        let distances_idx = DistancesIdx::from(&apt_idx, None);
         let quarter = quarter();
         assert_eq!(
             distances_idx,
             DistancesIdx {
                 graph: GraphIdx {
                     size: 3,
-                    edges: vec![quarter; 3],
+                    edges: vec![Some(quarter); 3],
                     _pd: PhantomData
                 }
             }
