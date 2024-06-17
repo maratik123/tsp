@@ -13,8 +13,28 @@ Usage:
 
 Help is available via `-h`/`--help` option:
 
-```bash
+```
 cargo run --help
+
+Usage: tsp [OPTIONS] [INPUT]
+
+Arguments:
+  [INPUT]  The input file. With no input file, or when input file is -, read standard input [default: -]
+
+Options:
+  -o, --output <OUTPUT>            Output file. If omitted, write to standard output
+  -p, --print-aps                  Output airport primary records
+  -f, --filter <FILTER>            Filter file
+  -a, --ants <ANTS>                Number of ants [default: 50]
+  -i, --iterations <ITERATIONS>    Number of iterations [default: 100]
+  -e, --evaporation <EVAPORATION>  Evaporation rate (from 0 to 1) [default: 0.1]
+      --alpha <ALPHA>              Alpha [default: 0.9]
+      --beta <BETA>                Beta [default: 1.5]
+  -u, --unfiltered                 Show unfiltered
+      --images <IMAGES>            Output images directory
+  -m, --min-dist <MIN_DIST>        Minimal allowable distance
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 
 Usage examples (considering, that file `FAACIFP18` lays in this directory):
