@@ -126,14 +126,20 @@ fn main() {
     }
 
     if let Some(images_dir) = args.images {
-        draw_images(images_dir, &apt_idx, &aco);
+        draw_images(images_dir, &airports, &apt_idx, &aco, args.unfiltered);
     }
 }
 
 const IMG_WIDTH: u32 = 1920 * 2;
 const IMG_HEIGHT: u32 = 1080 * 2;
 
-fn draw_images(mut images_dir: PathBuf, apt_idx: &AirportIdx, aco: &[u32]) {
+fn draw_images(
+    mut images_dir: PathBuf,
+    apts: &[Airport],
+    apt_idx: &AirportIdx,
+    aco: &[u32],
+    draw_unfiltered: bool,
+) {
     match images_dir.try_exists() {
         Ok(true) if images_dir.is_dir() => {}
         Ok(true) => {
@@ -181,7 +187,8 @@ fn draw_images(mut images_dir: PathBuf, apt_idx: &AirportIdx, aco: &[u32]) {
     );
     let scaler = Scaler::new(top_left, bottom_right, IMG_WIDTH, IMG_HEIGHT);
     images_dir.push("aco.png");
-    for apt in apt_idx.aps {
+
+    for apt in if draw_unfiltered { apts } else { apt_idx.aps } {
         draw_hollow_circle_mut(
             &mut img_buf,
             scaler.map(apt.coord),
