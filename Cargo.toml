@@ -7,7 +7,7 @@ edition = "2021"
 ab_glyph = "0.2"
 bitvec = "1"
 clap = { version = "4", features = ["derive"] }
-clap-stdin = "0.4"
+clap-stdin = "0.5"
 image = { version = "0.25", default-features = false, features = ["rayon", "png"] }
 imageproc = { version = "0.25", default-features = false, features = ["rayon"] }
 rand = "0.8"

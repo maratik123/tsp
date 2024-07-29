@@ -1,6 +1,6 @@
 use ab_glyph::{FontRef, PxScale};
 use clap::Parser;
-use clap_stdin::{FileOrStdin, Source};
+use clap_stdin::FileOrStdin;
 use image::buffer::ConvertBuffer;
 use image::{RgbImage, Rgba, RgbaImage};
 use imageproc::drawing::{
@@ -64,18 +64,8 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let buf = {
-        let (mut stdin_read, mut file_read);
-        let readable: &mut dyn Read = match args.input.source {
-            Source::Stdin => {
-                stdin_read = io::stdin().lock();
-                &mut stdin_read
-            }
-            Source::Arg(file) => {
-                file_read = fs::File::open(file).unwrap();
-                &mut file_read
-            }
-        };
-        let mut readable = BufReader::new(readable);
+        let reader = args.input.into_reader().unwrap();
+        let mut readable = BufReader::new(reader);
         let mut buf = vec![];
         readable.read_to_end(&mut buf).unwrap();
         buf
