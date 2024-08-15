@@ -1,5 +1,6 @@
 use crate::graph::GraphIdx;
 use crate::model::AirportIdx;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct DistancesIdx<'a> {
@@ -11,11 +12,24 @@ impl<'a> DistancesIdx<'a> {
         self.graph.between(None, apt1, apt2).flatten()
     }
 
-    pub fn from(apt_idx: &'a AirportIdx<'a>, min_dist: Option<f64>) -> Self {
+    pub fn from(
+        apt_idx: &'a AirportIdx<'a>,
+        min_dist: Option<f64>,
+        excepts: &HashMap<&str, HashSet<&str>>,
+    ) -> Self {
         Self {
             graph: GraphIdx::new(apt_idx, |apt1, apt2| {
-                Some(apt1.distance_to(apt2))
-                    .filter(|&dist| min_dist.map(|min_dist| dist >= min_dist).unwrap_or(true))
+                Some(apt1.distance_to(apt2)).filter(|&dist| {
+                    min_dist.map(|min_dist| dist >= min_dist).unwrap_or(true)
+                        || excepts
+                            .get(apt1.icao.as_str())
+                            .filter(|s| s.contains(apt2.icao.as_str()))
+                            .is_some()
+                        || excepts
+                            .get(apt2.icao.as_str())
+                            .filter(|s| s.contains(&apt1.icao.as_str()))
+                            .is_some()
+                })
             }),
         }
     }
@@ -106,7 +120,7 @@ mod tests {
     fn idx_between_test() {
         let airports = airports_template();
         let apt_idx = AirportIdx::new(&airports).unwrap();
-        let distances_idx = DistancesIdx::from(&apt_idx, None);
+        let distances_idx = DistancesIdx::from(&apt_idx, None, &HashMap::new());
         let quarter = quarter();
         for apt1 in 0..airports.len() as u32 {
             for apt2 in 0..airports.len() as u32 {
@@ -124,7 +138,7 @@ mod tests {
     fn test_distances_idx() {
         let airports = airports_template();
         let apt_idx = AirportIdx::new(&airports).unwrap();
-        let distances_idx = DistancesIdx::from(&apt_idx, None);
+        let distances_idx = DistancesIdx::from(&apt_idx, None, &HashMap::new());
         let quarter = quarter();
         assert_eq!(
             distances_idx,

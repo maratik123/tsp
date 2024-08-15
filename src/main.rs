@@ -7,7 +7,7 @@ use imageproc::drawing::{
     draw_antialiased_line_segment_mut, draw_hollow_circle_mut, draw_text_mut,
 };
 use imageproc::pixelops::interpolate;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::{fs, io};
@@ -59,6 +59,9 @@ struct Args {
     /// Minimal allowable distance
     #[clap(short, long)]
     min_dist: Option<f64>,
+    /// Allow distances between ICAO codes below min_dist, in format <ICAO Code>-<ICAO Code>,...
+    #[clap(long, num_args = 1.., value_delimiter = ',')]
+    except: Vec<String>,
 }
 
 fn main() {
@@ -98,7 +101,8 @@ fn main() {
 
     let airports: Vec<_> = recs.iter().map(Airport::from).collect();
     let apt_idx = AirportIdx::new(&airports).unwrap();
-    let distances = DistancesIdx::from(&apt_idx, args.min_dist);
+    let excepts = parse_excepts(&args.except);
+    let distances = DistancesIdx::from(&apt_idx, args.min_dist, &excepts);
 
     let aco = Aco::new(&distances, None, None);
     let (aco, dist) = aco.aco(
@@ -117,6 +121,33 @@ fn main() {
 
     if let Some(images_dir) = args.images {
         draw_images(images_dir, &airports, &apt_idx, &aco, args.unfiltered);
+    }
+}
+
+fn parse_excepts(arg: &[String]) -> HashMap<&str, HashSet<&str>> {
+    let mut ret: HashMap<_, HashSet<_>> = HashMap::new();
+
+    for pair in arg {
+        let apt_pair = AptPair::from_str(pair).unwrap();
+        ret.entry(apt_pair.0)
+            .and_modify(|s| {
+                s.insert(apt_pair.1);
+            })
+            .or_insert_with(|| HashSet::from([apt_pair.1]));
+    }
+
+    ret
+}
+
+struct AptPair<'a>(&'a str, &'a str);
+
+impl<'a> AptPair<'a> {
+    fn from_str(s: &'a str) -> Result<AptPair<'a>, String> {
+        let (a, b) = s
+            .trim()
+            .split_once('-')
+            .ok_or("Invalid format in except, expected ICAO-ICAO")?;
+        Ok(AptPair(a, b))
     }
 }
 
