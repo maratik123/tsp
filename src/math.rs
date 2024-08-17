@@ -6,10 +6,8 @@ pub fn great_circle(coord1: Coord, coord2: Coord) -> f64 {
     let delta_lat2 = (coord2.lat - coord1.lat) * 0.5;
     let delta_lon2 = (coord2.lon - coord1.lon) * 0.5;
 
-    let sin_lat2 = delta_lat2.sin();
-    let sin_lon2 = delta_lon2.sin();
-
-    let a = sin_lat2 * sin_lat2 + sin_lon2 * sin_lon2 * coord1.lat.cos() * coord2.lat.cos();
+    let a =
+        delta_lat2.sin().powi(2) + delta_lon2.sin().powi(2) * coord1.lat.cos() * coord2.lat.cos();
     let c = a.sqrt().atan2((1.0 - a).sqrt());
 
     c * R2

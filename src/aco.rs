@@ -11,6 +11,7 @@ use rand::{random, Rng};
 use rand_pcg::Pcg64Mcg;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use rayon::slice::ParallelSliceMut;
+use std::borrow::Cow;
 use std::f64;
 
 const INIT_INTENSITY_MULTIPLIER: f64 = 10.0;
@@ -19,9 +20,10 @@ const MINIMAL_INTENSITY: f64 = 1e-5;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Aco<'a> {
     size: u32,
-    dist_idx: DistancesIdx<'a>,
+    dist_idx: Cow<'a, DistancesIdx<'a>>,
     intensity: f64,
     q: f64,
+    opt_dist: Option<f64>,
 }
 
 impl<'a> Aco<'a> {
@@ -37,9 +39,9 @@ impl<'a> Aco<'a> {
             Some(opt_dist) => {
                 let a = eval_a(opt_dist);
                 let recip_plank_law_ext = recip_plank_law_ext(opt_dist, a);
-                dist_idx.transform(|v| plank_law(v, a, recip_plank_law_ext).recip())
+                Cow::Owned(dist_idx.transform(|v| plank_law(v, a, recip_plank_law_ext).recip()))
             }
-            None => dist_idx.clone(),
+            None => Cow::Borrowed(dist_idx),
         };
 
         let mean_dist = dist_idx.graph.triangle_sum() / (size * (size - 1) / 2) as f64;
@@ -61,6 +63,7 @@ impl<'a> Aco<'a> {
             dist_idx,
             intensity,
             q,
+            opt_dist,
         }
     }
 
@@ -138,11 +141,10 @@ impl<'a> Aco<'a> {
                 }
             });
 
-            for cycle_dist in cycles.drain(..) {
-                let (cycle, distance) = &cycle_dist;
+            for (cycle, distance) in cycles.drain(..) {
                 let delta = self.q / distance;
 
-                for (&node1, &node2) in cycling(cycle) {
+                for (&node1, &node2) in cycling(&cycle) {
                     if let Some(intencity) =
                         intensities.between_mut(node1, node2).unwrap_or_else(|| {
                             unreachable!("No pheromones between {node1} and {node2}")
@@ -153,13 +155,13 @@ impl<'a> Aco<'a> {
                 }
 
                 match best_cycle_dist {
-                    Some((_, best_distance)) if distance < &best_distance => {
+                    Some((_, best_distance)) if distance < best_distance => {
                         println!("New cycle: {cycle:?}, len: {distance:.06}, iteration: [{i}]");
-                        best_cycle_dist = Some(cycle_dist);
+                        best_cycle_dist = Some((cycle, distance));
                     }
                     None => {
                         println!("First cycle: {cycle:?}, len: {distance:.05}");
-                        best_cycle_dist = Some(cycle_dist);
+                        best_cycle_dist = Some((cycle, distance));
                     }
                     _ => {}
                 }
