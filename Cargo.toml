@@ -10,6 +10,7 @@ clap = { version = "4", features = ["derive"] }
 clap-stdin = "0.5"
 image = { version = "0.25", default-features = false, features = ["rayon", "png"] }
 imageproc = { version = "0.25", default-features = false, features = ["rayon"] }
+lambert_w = { version = "0.5", default-features = false, features = ["std", "24bits", "50bits"] }
 rand = "0.8"
 rand_pcg = "0.3"
 rayon = "1"

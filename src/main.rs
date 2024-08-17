@@ -62,6 +62,9 @@ struct Args {
     /// Allow distances between ICAO codes below min_dist, in format <ICAO Code>-<ICAO Code>,...
     #[clap(long, num_args = 1.., value_delimiter = ',')]
     except: Vec<String>,
+    /// Optimal distance
+    #[clap(long)]
+    opt: Option<f64>,
 }
 
 fn main() {
@@ -104,7 +107,7 @@ fn main() {
     let excepts = parse_excepts(&args.except);
     let distances = DistancesIdx::from(&apt_idx, args.min_dist, &excepts);
 
-    let aco = Aco::new(&distances, None, None);
+    let aco = Aco::new(&distances, None, None, args.opt);
     let (aco, dist) = aco.aco(
         args.iterations,
         args.ants,

@@ -5,11 +5,13 @@ use crate::reusable_weighted_index::CumulativeWeightsWrapper;
 use crate::util::cycling;
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
+use lambert_w::lambert_w0;
 use rand::distributions::Distribution;
 use rand::{random, Rng};
 use rand_pcg::Pcg64Mcg;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use rayon::slice::ParallelSliceMut;
+use std::f64;
 
 const INIT_INTENSITY_MULTIPLIER: f64 = 10.0;
 const MINIMAL_INTENSITY: f64 = 1e-5;
@@ -17,14 +19,28 @@ const MINIMAL_INTENSITY: f64 = 1e-5;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Aco<'a> {
     size: u32,
-    dist_idx: &'a DistancesIdx<'a>,
+    dist_idx: DistancesIdx<'a>,
     intensity: f64,
     q: f64,
 }
 
 impl<'a> Aco<'a> {
-    pub fn new(dist_idx: &'a DistancesIdx<'a>, intensity: Option<f64>, q: Option<f64>) -> Self {
+    pub fn new(
+        dist_idx: &'a DistancesIdx<'a>,
+        intensity: Option<f64>,
+        q: Option<f64>,
+        opt_dist: Option<f64>,
+    ) -> Self {
         let size = dist_idx.graph.size;
+
+        let dist_idx = match opt_dist {
+            Some(opt_dist) => {
+                let a = eval_a(opt_dist);
+                let recip_plank_law_ext = recip_plank_law_ext(opt_dist, a);
+                dist_idx.transform(|v| plank_law(v, a, recip_plank_law_ext).recip())
+            }
+            None => dist_idx.clone(),
+        };
 
         let mean_dist = dist_idx.graph.triangle_sum() / (size * (size - 1) / 2) as f64;
 
@@ -221,5 +237,39 @@ impl<'a> Aco<'a> {
             total_dist.push_mut(self.dist_idx.between(current, chosen)?);
             current = chosen;
         }
+    }
+}
+
+fn eval_a(opt_dist: f64) -> f64 {
+    (3.0 + lambert_w0(-3.0 / f64::consts::E.powi(3))) / opt_dist
+}
+
+fn recip_plank_law_ext(opt_dist: f64, a: f64) -> f64 {
+    plank_law(opt_dist, a, 1.0).recip()
+}
+
+fn plank_law(x: f64, a: f64, recip_law_ext: f64) -> f64 {
+    if x.is_finite() && x != 0.0 {
+        recip_law_ext * x.powi(3) / (x * a).exp_m1()
+    } else {
+        x
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_plank_law() {
+        let a = eval_a(500.0);
+        let recip_law_ext = recip_plank_law_ext(500.0, a);
+        let v_499 = plank_law(499.0, a, recip_law_ext);
+        let v_500 = plank_law(500.0, a, recip_law_ext);
+        let v_501 = plank_law(501.0, a, recip_law_ext);
+
+        assert!((v_500 - 1.0).abs() < 1e-9);
+        assert!(v_499 < v_500);
+        assert!(v_501 < v_500);
     }
 }

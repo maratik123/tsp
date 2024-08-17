@@ -313,6 +313,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
+name = "fast_polynomial"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62eea6ee590b08a5f8b1139f4d6caee195b646d0c07e4b1808fbd5c4dea4829a"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "fdeflate"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -440,6 +449,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1868808506b929d7b0cfa8f75951347aa71bb21144b7791bae35d9bccfcfe37a"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "lambert_w"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8918581f60bc58a272d0c752ccee83645cee54f25192fe66f12c2ef653ee80ad"
+dependencies = [
+ "fast_polynomial",
 ]
 
 [[package]]
@@ -1019,6 +1037,7 @@ dependencies = [
  "clap-stdin",
  "image",
  "imageproc",
+ "lambert_w",
  "rand",
  "rand_pcg",
  "rayon",

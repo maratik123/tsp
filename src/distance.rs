@@ -33,6 +33,12 @@ impl<'a> DistancesIdx<'a> {
             }),
         }
     }
+
+    pub fn transform(&self, f: impl Fn(f64) -> f64) -> Self {
+        Self {
+            graph: self.graph.transform(|d| d.map(|v| f(v))),
+        }
+    }
 }
 
 #[cfg(test)]
